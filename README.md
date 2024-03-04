@@ -1,6 +1,10 @@
 # PaddlePulse
 A repository for the ping-pong score detection system project for the Intellitect 2024 Hackathon.
 
+# Planning
+
+[Schematic Design Room!](https://excalidraw.com/#room=d22b4043604411b07d1b,PO3tBo_Xvl0g5sGfsKVo8g)
+
 # Learing Resources
 
 [Learning Rust](https://www.youtube.com/playlist?list=PLlrxD0HtieHjbTjrchBwOVks_sr8EVW1x)
