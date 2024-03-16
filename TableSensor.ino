@@ -9,6 +9,12 @@ Adafruit_AlphaNum4 display2 = Adafruit_AlphaNum4();
 const int player1SignalPin = 2;  // Input pin for player 1 signal
 const int player2SignalPin = 3;  // Input pin for player 2 signal
 
+// Pin assignments for the buttons
+const int increasePlayer1Button = 6;
+const int decreasePlayer1Button = 7;
+const int increasePlayer2Button = 8;
+const int decreasePlayer2Button = 9;
+
 const int player1LedPin = 4;  // LED for player 1
 const int player2LedPin = 5;  // LED for player 2
 
@@ -37,6 +43,13 @@ void setup() {
   pinMode(player1LedPin, OUTPUT);
   pinMode(player2LedPin, OUTPUT);
 
+  // button inputs
+  pinMode(increasePlayer1Button, INPUT_PULLUP);
+  pinMode(decreasePlayer1Button, INPUT_PULLUP);
+  pinMode(increasePlayer2Button, INPUT_PULLUP);
+  pinMode(decreasePlayer2Button, INPUT_PULLUP);
+
+
   // Start serial communication at 9600 baud rate
   Serial.begin(9600);
 
@@ -51,6 +64,8 @@ void setup() {
 
   display1.writeDisplay();  // Write the buffer to the display
   display2.writeDisplay();  // Write the buffer to the display
+
+  Serial.println("Startup Complete!");
 
   delay(50);
 }
@@ -76,6 +91,9 @@ void loop() {
 
   if (roundStarted == false)  // On Player Serve
   {
+    //watch for button input between rounds
+    checkButtons();
+
     // If Player 1 has started serving
     if (player1Signal == HIGH) {
       player1Serving = true;
@@ -277,6 +295,8 @@ void resetGame() {
   player2Score = 0;
   Serial.println("game is resetting");
   resetRound();
+  displayStartup();
+  delay(300);
 }
 
 void resetRound() {
@@ -297,7 +317,6 @@ void player1Scored() {
 }
 
 void score() {
-
   displayPlayerScores();
   delay(afterScoreDelay);
   resetRound();
@@ -309,4 +328,54 @@ void player2Scored() {
   player2Score = min(player2Score + 1, 99);  // Increment score with a max of 99
   Serial.println("p2 score");
   score();
+}
+
+void adjustPlayerScore(short playerNumber, bool increase) {
+  if (increase) {
+    if (playerNumber == 1) {
+      player1Score = min(player1Score + 1, 99);
+      Serial.println("manual increase p1 score");
+    } else {
+      player2Score = min(player2Score + 1, 99);
+      Serial.println("manual increase p2 score");
+    }
+  } else {
+    if (playerNumber == 1) {
+      player1Score = max(player1Score - 1, 0);
+      Serial.println("manual decrease p1 score");
+    } else {
+      player2Score = max(player2Score - 1, 0);
+      Serial.println("manual decrease p2 score");
+    }
+  }
+  Serial.print("score: ");
+  Serial.print(player1Score);
+  Serial.print(", ");
+  Serial.println(player2Score);
+
+  displayPlayerScores();
+  delay(300);
+  resetRound();
+}
+
+void checkButtons() {
+  // Increase Player 1 Score
+  if (digitalRead(increasePlayer1Button) == LOW) {
+    adjustPlayerScore(1, true);
+  }
+
+  // Decrease Player 1 Score
+  if (digitalRead(decreasePlayer1Button) == LOW) {
+    adjustPlayerScore(1, false);
+  }
+
+  // Increase Player 2 Score
+  if (digitalRead(increasePlayer2Button) == LOW) {
+    adjustPlayerScore(2, true);
+  }
+
+  // Decrease Player 2 Score
+  if (digitalRead(decreasePlayer2Button) == LOW) {
+    adjustPlayerScore(2, false);
+  }
 }
