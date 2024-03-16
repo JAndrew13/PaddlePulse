@@ -61,25 +61,25 @@ void loop() {
   if (gameStart == false) // On Serve
   {
     if (player1Signal == HIGH) {
-      gameStart = true;
       player1Serving = true;
       startTime = millis();
       Serial.println("p1 serve!");
     }
 
     if (player2Signal == HIGH) {
-      gameStart = true;
       player2Serving = true;
       startTime = millis();
       Serial.println("p2 serve!");
     }
+    gameStart = true;
   } 
 
   else // if gameStart is true
   {
     if (player1Signal == HIGH) {
-
-      if(player1Serving == true)
+// serve hit net 
+      
+      if(player1Serving == true && ! player1Returning)
       {
         player2Scored();
       }
@@ -98,7 +98,7 @@ void loop() {
     }
   
     if (player2Signal == HIGH) {
-      if(player2Serving == true)
+      if(player2Serving == true && !player2Returning)
       {
         player1Scored();
       }
@@ -135,7 +135,6 @@ void checkTimer()
     {
       player1Scored();
     }
-    elapsedTime = 0;
   }
 }
 
@@ -193,28 +192,44 @@ void displayWinner(int player) {
 void resetGame()
 {
   player1Score = 0;
+  player2Score = 0;
+  resetRound();
+}
+
+void resetRound()
+{
+  
   player1Returning = false;
   player1Serving = false;
 
-  player2Score = 0;
+
   player2Returning = false;
   player2Serving = false;
+
+  gameStart = false;
 }
 
 void player1Scored()
 {
     player1Score = min(player1Score + 1, 99); // Increment score with a max of 99
-    displayPlayerScores();
+    
+    Serial.println("p1 score");
+
+score();
+}
+
+void score(){
+  
+  resetRound();
+  displayPlayerScores();
     elapsedTime = 0;
     delay(200);
-    Serial.println("p1 score");
 }
 
 void player2Scored()
 {
     player2Score = min(player2Score + 1, 99); // Increment score with a max of 99
-    displayPlayerScores();
-    elapsedTime = 0;
-    delay(200);
+    
     Serial.println("p2 score");
+  score();
 }
