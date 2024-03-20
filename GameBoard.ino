@@ -9,13 +9,20 @@ Adafruit_AlphaNum4 display2 = Adafruit_AlphaNum4();
 const int player1SignalPin = 2;  // Input pin for player 1 signal
 const int player2SignalPin = 3;  // Input pin for player 2 signal
 
+// Pin assignments for the buttons
+const int increasePlayer1Button = 6;
+const int decreasePlayer1Button = 7;
+const int increasePlayer2Button = 8;
+const int decreasePlayer2Button = 9;
+
 const int player1LedPin = 4;  // LED for player 1
 const int player2LedPin = 5;  // LED for player 2
 
 bool roundStarted = false;
 const int winCondition = 11;
 const int leadCondition = 2;
-const int debounceDelay = 100;
+const int debounceDelay = 60;
+const int afterScoreDelay = 5000;
 
 int player1Score = 0;
 int player2Score = 0;
@@ -36,6 +43,13 @@ void setup() {
   pinMode(player1LedPin, OUTPUT);
   pinMode(player2LedPin, OUTPUT);
 
+  // button inputs
+  pinMode(increasePlayer1Button, INPUT_PULLUP);
+  pinMode(decreasePlayer1Button, INPUT_PULLUP);
+  pinMode(increasePlayer2Button, INPUT_PULLUP);
+  pinMode(decreasePlayer2Button, INPUT_PULLUP);
+
+
   // Start serial communication at 9600 baud rate
   Serial.begin(9600);
 
@@ -50,30 +64,38 @@ void setup() {
 
   display1.writeDisplay();  // Write the buffer to the display
   display2.writeDisplay();  // Write the buffer to the display
+
+  Serial.println("Startup Complete!");
+
+  delay(50);
 }
 
 void loop() {
   int player1Signal = digitalRead(player1SignalPin);
   int player2Signal = digitalRead(player2SignalPin);
 
-  
+  if (player1Signal == HIGH && player2Signal == HIGH) {
+    Serial.println("Both Boards detected hit. Skipping loop.");
+    return;
+  }
+
   if (player1Signal == HIGH || player2Signal == HIGH) {
     delay(debounceDelay);
     startTime = millis();
-    if(player1Signal == HIGH)
-    {
+    if (player1Signal == HIGH) {
       Serial.println("Player 1 Board hit!");
-    } 
-    else
-    {
+    } else {
       Serial.println("Player 2 Board hit!");
     }
   }
 
   if (roundStarted == false)  // On Player Serve
   {
+    //watch for button input between rounds
+    checkButtons();
+
     // If Player 1 has started serving
-    if (player1Signal == HIGH) { 
+    if (player1Signal == HIGH) {
       player1Serving = true;
       Serial.print("round has started.");
       roundStarted = true;
@@ -103,15 +125,7 @@ void loop() {
         return;
       }
 
-      // Player 1 double hit
-      if (player1Serving == true || player1Returning == true)
-      {
-        Serial.println("P1 double hit.");
-        player2Scored();
-        return;
-      }
-
-      // Player 2 completed return 
+      // Player 2 completed return
       if (player2Returning == true) {
         Serial.println("p2 returned");
         player2Returning = false;
@@ -120,7 +134,7 @@ void loop() {
       }
     }
 
-    
+
     // Player 1 completed serve
     if (player2Signal == HIGH) {
       if (player1Serving == true && !player2Returning) {
@@ -130,14 +144,7 @@ void loop() {
         return;
       }
 
-      // Player 2 double hit
-      if (player2Serving == true || player2Returning == true) {
-        Serial.println("P2 double hit.");
-        player1Scored();
-        return;
-      }
-
-      // Player 1 completed return 
+      // Player 1 completed return
       if (player1Returning == true) {
         Serial.println("p1 returned");
         player1Returning = false;
@@ -153,19 +160,17 @@ void loop() {
 
 void checkTimer() {
   unsigned long tempTimeLimit = elapsedTimeLimit;
-  if (player1Serving == true || player2Serving == true)
-  {
+  if (player1Serving == true || player2Serving == true) {
     tempTimeLimit = tempTimeLimit / 2;
   }
 
   elapsedTime = millis() - startTime;
   if (elapsedTime >= tempTimeLimit) {
     if (player1Serving || player1Returning) {
-      Serial.println("p1 timed out");  
+      Serial.println("p1 timed out");
       player2Scored();
-    }
-    else if (player2Serving || player2Returning) {
-      Serial.println("p2 timed out");  
+    } else if (player2Serving || player2Returning) {
+      Serial.println("p2 timed out");
       player1Scored();
     }
   }
@@ -174,14 +179,14 @@ void checkTimer() {
 void checkScores() {
   // If player 1 has won
   if (player1Score >= winCondition && player1Score - leadCondition >= player2Score) {
-    Serial.println("p1 wins");  
+    Serial.println("p1 wins");
     displayWinner(1);
     delay(10000);
     resetGame();
   }
-    // If player 2 has won
+  // If player 2 has won
   if (player2Score >= winCondition && player2Score - leadCondition >= player1Score) {
-    Serial.println("p2 wins");  
+    Serial.println("p2 wins");
     displayWinner(2);
     delay(10000);
     resetGame();
@@ -207,23 +212,23 @@ void displayPlayerScores() {
   display2.writeDisplay();
 }
 
-// Display the winner 
+// Display the winner
 void displayWinner(int player) {
   // Determine the ASCII character to display based on the player number
   char winnerChar = (player == 1) ? '1' : '2';
 
   // Animation loop to flash the winner's number
-  for(int i = 0; i < 6; i++) { // Flash 6 times
+  for (int i = 0; i < 6; i++) {  // Flash 6 times
     display1.clear();
     display2.clear();
-    
-    if (i % 2 == 0) { // On even iterations, display the winner
+
+    if (i % 2 == 0) {  // On even iterations, display the winner
       // Show the winning player's number on both displays
       display1.writeDigitAscii(0, winnerChar, false);
       display1.writeDigitAscii(1, winnerChar, false);
       display1.writeDigitAscii(2, winnerChar, false);
       display1.writeDigitAscii(3, winnerChar, false);
-      
+
       display2.writeDigitAscii(0, winnerChar, false);
       display2.writeDigitAscii(1, winnerChar, false);
       display2.writeDigitAscii(2, winnerChar, false);
@@ -233,7 +238,7 @@ void displayWinner(int player) {
     // Write changes to the displays
     display1.writeDisplay();
     display2.writeDisplay();
-    
+
     // Wait for 500 milliseconds
     delay(500);
   }
@@ -243,7 +248,7 @@ void displayWinner(int player) {
   display2.clear();
   // Example for "Game Over" message, adjust as per your requirement
   // This part assumes display1 is sufficient for "P1" or "P2" and "WIN!"
-  if(player == 1) {
+  if (player == 1) {
     display1.writeDigitAscii(0, 'P');
     display1.writeDigitAscii(1, '1');
     display1.writeDigitAscii(2, 'W');
@@ -258,7 +263,9 @@ void displayWinner(int player) {
   display1.writeDisplay();
   display2.writeDisplay();
 
-  delay(10000); // Display "Game Over" for 10 seconds before your next action
+  delay(10000);  // Display "Game Over" for 10 seconds before your next action
+
+  resetGame();
 }
 
 // Display zeros until player serves
@@ -266,7 +273,7 @@ void displayStartup() {
   display1.clear();
   display2.clear();
 
- char zero = '0'; // ASCII character for 0
+  char zero = '0';                           // ASCII character for 0
   display1.writeDigitAscii(0, zero, false);  // Tens place for Player 1
   display1.writeDigitAscii(1, zero, false);  // Ones place for Player 1
   display1.writeDigitAscii(2, zero, false);  // Tens place for Player 2
@@ -286,8 +293,10 @@ void displayStartup() {
 void resetGame() {
   player1Score = 0;
   player2Score = 0;
-  Serial.println("game is resetting");  
+  Serial.println("game is resetting");
   resetRound();
+  displayStartup();
+  delay(300);
 }
 
 void resetRound() {
@@ -298,7 +307,7 @@ void resetRound() {
   player2Serving = false;
 
   roundStarted = false;
-  Serial.println("round is resetting");  
+  Serial.println("round is resetting");
 }
 
 void player1Scored() {
@@ -308,15 +317,65 @@ void player1Scored() {
 }
 
 void score() {
-  resetRound();
   displayPlayerScores();
+  delay(afterScoreDelay);
+  resetRound();
   elapsedTime = 0;
   delay(debounceDelay);
 }
 
 void player2Scored() {
   player2Score = min(player2Score + 1, 99);  // Increment score with a max of 99
-
   Serial.println("p2 score");
   score();
+}
+
+void adjustPlayerScore(short playerNumber, bool increase) {
+  if (increase) {
+    if (playerNumber == 1) {
+      player1Score = min(player1Score + 1, 99);
+      Serial.println("manual increase p1 score");
+    } else {
+      player2Score = min(player2Score + 1, 99);
+      Serial.println("manual increase p2 score");
+    }
+  } else {
+    if (playerNumber == 1) {
+      player1Score = max(player1Score - 1, 0);
+      Serial.println("manual decrease p1 score");
+    } else {
+      player2Score = max(player2Score - 1, 0);
+      Serial.println("manual decrease p2 score");
+    }
+  }
+  Serial.print("score: ");
+  Serial.print(player1Score);
+  Serial.print(", ");
+  Serial.println(player2Score);
+
+  displayPlayerScores();
+  delay(300);
+  resetRound();
+}
+
+void checkButtons() {
+  // Increase Player 1 Score
+  if (digitalRead(increasePlayer1Button) == LOW) {
+    adjustPlayerScore(1, true);
+  }
+
+  // Decrease Player 1 Score
+  if (digitalRead(decreasePlayer1Button) == LOW) {
+    adjustPlayerScore(1, false);
+  }
+
+  // Increase Player 2 Score
+  if (digitalRead(increasePlayer2Button) == LOW) {
+    adjustPlayerScore(2, true);
+  }
+
+  // Decrease Player 2 Score
+  if (digitalRead(decreasePlayer2Button) == LOW) {
+    adjustPlayerScore(2, false);
+  }
 }
